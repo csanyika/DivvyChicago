@@ -1,0 +1,115 @@
+---
+title: "Divvy_Project"
+output: html_document
+date: "2023-12-01"
+---
+
+```{r}
+setwd("~/Desktop")
+library(data.table)
+library(tidyverse)
+library(dplyr)
+divvy <- fread("Divvy_Trips.csv")
+```
+
+Data Cleaning
+```{r}
+library(janitor)
+library(lubridate)
+#make everything lowercase and turn spaces in titles into underscores
+divvy <- divvy %>% clean_names()
+colnames(divvy)
+
+#convert from character to datetime
+divvy$start_time <- mdy_hms(divvy$start_time)
+divvy$stop_time <- mdy_hms(divvy$stop_time)
+```
+
+
+Graph the popularity of Which day of week vs time use heatmap partition by gender
+
+What is the proportion of female to male riders in each month? Rank in descending order. Maybe by starting area? Or by ending area?
+  - this information could be valuable for advertising purposes as well as design purposes. Different shapes of seats?
+```{r}
+divvy %>% start_time
+  group_by(gender) %>% summarize()
+```
+
+What are the top 10 most popular start/stop stations?
+```{r}
+divvy %>% group_by(from_station_name, to_station_name) %>% summarize(riders = n()) %>% arrange (-riders)
+```
+
+  
+Which station do most rides start from?
+  - end of day, need to ensure bikes are brought back to there
+  - may also need to pick up bikes from busy stations drop off
+```{r}
+
+```
+
+What is the average trip duration per age range (0-10; 10-20; 20-30 etc.)? Create a data visualization stratified by user type.
+  - frequency of each age range to get an idea of how many bikes need to be available at a time. Maybe add more bikes to some stations?
+  
+During the busiest month, which are the top 10 stations that have more bikes taken than returned. And which returned more than taken.
+```{r}
+divvy_month <- divvy %>% 
+  mutate(start_month = month(start_time), stop_month = month(stop_time))
+
+#check month where most bikes are taken
+busy_start <- divvy_month %>% 
+  group_by(start_month) %>% 
+  summarise(starts_n = n()) %>%
+  arrange(-starts_n) %>%
+  head(1)
+busy_start
+
+#check month where most bikes are returned
+busy_stop <- divvy_month %>% 
+  group_by(stop_month) %>% 
+  summarise(stops_n = n()) %>%
+  arrange(-stops_n) %>%
+  head(1)
+busy_stop
+
+#August (8) is busiest for starting and stoping rides
+divvy_month <- divvy_month %>% filter(start_month == 8)
+
+take <- divvy_month %>% 
+  group_by(from_station_id, from_station_name) %>% 
+  summarise(bikes_taken = n())
+
+return <- divvy_month %>% 
+  group_by(to_station_id, to_station_name) %>% 
+  summarise(bikes_returned = n())
+
+take_return <- take %>% 
+  left_join(return, by= c("from_station_name" = "to_station_name")) %>% 
+  mutate(diff = bikes_taken-bikes_returned) %>%
+  rename(station_id = from_station_id) %>%
+  rename(station_name = from_station_name) %>% 
+  select(station_id, station_name, bikes_taken, bikes_returned, diff) 
+
+more_taken <- take_return %>% arrange(-diff) %>% head(10)
+more_taken
+
+more_returned <- take_return %>% arrange(diff) %>% head(10)
+more_returned
+```
+
+
+Of the riders who keep a bike overnight, graph the proportion of riders who keep the bike for <1 day, 1-10 days, 10-20 days, 20-30 days >30 days.
+```{r}
+divvy_overnight <- divvy %>% 
+  select(trip_id, start_time, stop_time, trip_duration) %>%
+  mutate(start_day = wday(start_time), stop_day = wday(stop_time)) %>%
+  filter(start_day != stop_day) %>% 
+  #calculate number of days
+  mutate(trip_days = format(trip_duration/(60*60*24), scientific = FALSE))
+#create day categories
+#graph
+```
+
+
+
+Boxplot of men vs women use
