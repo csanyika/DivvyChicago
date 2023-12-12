@@ -23,17 +23,83 @@ colnames(divvy)
 #convert from character to datetime
 divvy$start_time <- mdy_hms(divvy$start_time)
 divvy$stop_time <- mdy_hms(divvy$stop_time)
+
+divvy %>% head(100000)
+```
+
+How much of the data does not have an entry for gender? Possible reasons.
+```{r}
+unspesified_n =
+  nrow(divvy %>% filter(gender==""))
+unspecified_prop <- unspesified_n/nrow(divvy)
+unspecified_prop 
+#23.04% of entries do not have gender specified
+
+unspecified <- divvy %>% filter(gender=="") %>% 
+  group_by(user_type) %>% 
+  summarise(counts =n())
+
+cust_prop <- (unspecified$counts %>% filter(user_type== "Customer"))/unspesified_n
+cust_prop
+
+dep_prop <- nrow(unspecified %>% 
+                   filter(user_type== "Dependent")
+                 )/nrow(unspecified)
+dep_prop
+
+sub_prop <- nrow(unspecified %>% 
+                   filter(user_type== "Subscriber" )
+                 )/nrow(unspecified)
+sub_prop
+```
+
+Number of riders per day stratified by gender
+#chose not to impute unspecified gender rows becuase these could have multiple interpretations. Riders who do not 
+```{r}
+divvy_week <- divvy %>%
+  mutate(dayofweek = wday(start_time)) %>% 
+  group_by(dayofweek, gender) %>% 
+  summarize(rides = n()) 
+ggplot(divvy_week,
+       aes(x=dayofweek, y=rides, color=gender))+
+  geom_line()
 ```
 
 
-Graph the popularity of Which day of week vs time use heatmap partition by gender
+Number of riders at different times throughout each day. Graph for each listed gender
 
+Graph the popularity of Which day of week vs time use heatmap partition by gender
 What is the proportion of female to male riders in each month? Rank in descending order. Maybe by starting area? Or by ending area?
   - this information could be valuable for advertising purposes as well as design purposes. Different shapes of seats?
 ```{r}
-divvy %>% start_time
-  group_by(gender) %>% summarize()
+library(ggplot2)
+
+divvy_days <- divvy %>%
+  mutate(dayofweek = weekdays(start_time),
+         s_time = format(start_time, "%H")) %>%
+  group_by(dayofweek, s_time) %>%
+  summarize(female = sum(gender=="Female"), 
+           male= sum(gender=="Male")) %>%
+  ungroup()
+
+ggplot(divvy_days,
+       aes(x=dayofweek, y=s_time, fill=female)) + 
+  geom_tile() +
+  scale_fill_gradient(low = "lightblue", high = "darkblue") +
+  labs(x = "Day of Week", y = "", title = "Female Riders per Day of the Week") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplot(divvy_days,
+       aes(x=dayofweek, y=s_time, fill=male)) + 
+  geom_tile() +
+  scale_fill_gradient(low = "lightblue", high = "darkblue") +
+  labs(x = "Day of Week", y = "", title = "Male Riders per Day of the Week") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
+
+
 
 What are the top 10 most popular start/stop stations?
 ```{r}
@@ -111,5 +177,15 @@ divvy_overnight <- divvy %>%
 ```
 
 
+Maybe which bikes are out of commission?
+How long a bike is kept?
+```{r}
+divvy %>% head(100000) %>% filter(is.na(start_time))
 
-Boxplot of men vs women use
+  group_by(bike_id) %>% 
+  summarize(first_year = min(start_time, na.rm = TRUE), 
+            last_year = max(stop_time, na.rm = TRUE)) %>% 
+  mutate(lifetime = last_year - first_year)
+```
+
+
