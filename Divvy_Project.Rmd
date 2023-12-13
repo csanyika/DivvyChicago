@@ -100,11 +100,13 @@ divvy_days <- divvy %>%
   summarize(ave_riders = mean(rides)) %>%
   ungroup()
 
+order_of_days <- c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
+
 #filter for male entries
 divvy_days_male <- divvy_days %>% filter(gender=="Male")
 #male heat map
 ggplot(divvy_days_male,
-       aes(x=dayofweek, y=s_time, fill=ave_riders)) + 
+       aes(x = factor(dayofweek, levels = order_of_days), y=s_time, fill=ave_riders)) + 
   geom_tile() +
   scale_fill_gradient(low = "lightblue", high = "darkblue", limits = range(0,max(divvy_days_male$ave_riders))) +
   labs(x = "Day of Week", y = "24-Hour Time", title = "Male Riders per Day of the Week") +
@@ -115,7 +117,7 @@ ggplot(divvy_days_male,
 divvy_days_female <- divvy_days %>% filter(gender=="Female")
 #female heat map
 ggplot(divvy_days_female,
-       aes(x=dayofweek, y=s_time, fill=ave_riders)) + 
+       aes(x = factor(dayofweek, levels = order_of_days), y=s_time, fill=ave_riders)) + 
   geom_tile() +
   scale_fill_gradient(low = "lightblue", high = "darkblue") +
   labs(x = "Day of Week", y = "24-Hour Time", title = "Female Riders per Day of the Week") +
@@ -124,7 +126,7 @@ ggplot(divvy_days_female,
 
 #female heatmap with same range as male
 ggplot(divvy_days_female,
-       aes(x=dayofweek, y=s_time, fill=ave_riders)) + 
+       aes(x = factor(dayofweek, levels = order_of_days), y=s_time, fill=ave_riders)) + 
   geom_tile() +
   scale_fill_gradient(low = "lightblue", high = "darkblue", limits = range(0,max(divvy_days_male$ave_riders))) +
   labs(x = "Day of Week", y = "24-Hour Time", title = "Female Riders per Day of the Week") +
