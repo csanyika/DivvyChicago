@@ -133,15 +133,6 @@ ggplot(divvy_days_female,
 ```
 
 QUESTION 4
-What are the top 10 most popular start/stop stations?
-```{r}
-divvy %>% 
-  group_by(from_station_name, to_station_name) %>% 
-  summarize(riders = n()) %>% 
-  arrange (-riders) %>% head(10)
-```
-
-QUESTION 4
 During the busiest month, which are the top 10 stations that have more bikes taken than returned. And which more returned than taken.
 ```{r}
 #add variable for start month and variable for stop month
