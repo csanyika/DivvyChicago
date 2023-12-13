@@ -23,46 +23,41 @@ colnames(divvy)
 #convert from character to datetime
 divvy$start_time <- mdy_hms(divvy$start_time)
 divvy$stop_time <- mdy_hms(divvy$stop_time)
-
-divvy %>% head(100000)
 ```
 
-How much of the data does not have an entry for gender? Possible reasons.
+How much of the data does not have an entry for gender? What are the possible reasons for this?
 ```{r}
-unspesified_n =
-  nrow(divvy %>% filter(gender==""))
+unspesified_n <- nrow(divvy %>% filter(gender==""))
 unspecified_prop <- unspesified_n/nrow(divvy)
 unspecified_prop 
 #23.04% of entries do not have gender specified
 
 unspecified <- divvy %>% filter(gender=="") %>% 
   group_by(user_type) %>% 
-  summarise(counts =n())
-
-cust_prop <- (unspecified$counts %>% filter(user_type== "Customer"))/unspesified_n
-cust_prop
-
-dep_prop <- nrow(unspecified %>% 
-                   filter(user_type== "Dependent")
-                 )/nrow(unspecified)
-dep_prop
-
-sub_prop <- nrow(unspecified %>% 
-                   filter(user_type== "Subscriber" )
-                 )/nrow(unspecified)
-sub_prop
+  summarise(counts =n()) %>%
+  mutate(prop = counts/sum(counts))
+unspecified
+#most unspecified gender entries are for customers. It makes sense that this data is not provided because customers buy passes as needed where as subscribers would be expected to be frequent users with accounts
 ```
 
-Number of riders per day stratified by gender
-#chose not to impute unspecified gender rows becuase these could have multiple interpretations. Riders who do not 
+Number of riders per day stratified by gender. Excluding data missing gender.
 ```{r}
 divvy_week <- divvy %>%
-  mutate(dayofweek = wday(start_time)) %>% 
+  filter(gender %in% c("Female", "Male")) %>%
+  mutate(start_date = as_date(start_time)) %>%
+  group_by(start_date, gender) %>%
+  summarize(rides = n()) %>%
+  mutate(dayofweek = wday(start_date)) %>% 
   group_by(dayofweek, gender) %>% 
-  summarize(rides = n()) 
+  summarize(ave_ride = mean(rides))
+
+library(ggplot2)
+
 ggplot(divvy_week,
-       aes(x=dayofweek, y=rides, color=gender))+
-  geom_line()
+       aes(x=dayofweek, y=ave_ride, color=gender))+
+  geom_line() +
+  labs(x = "Day of the Week", y = "Number of Rides", color = "Gender") +
+  scale_x_continuous(breaks = 1:7, labels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))
 ```
 
 
@@ -72,9 +67,8 @@ Graph the popularity of Which day of week vs time use heatmap partition by gende
 What is the proportion of female to male riders in each month? Rank in descending order. Maybe by starting area? Or by ending area?
   - this information could be valuable for advertising purposes as well as design purposes. Different shapes of seats?
 ```{r}
-library(ggplot2)
-
-divvy_days <- divvy %>%
+divvy_days <- divvy %>% head(1000)
+  filter(gender %in% c("Female", "Male")) %>%
   mutate(dayofweek = weekdays(start_time),
          s_time = format(start_time, "%H")) %>%
   group_by(dayofweek, s_time) %>%
@@ -179,13 +173,33 @@ divvy_overnight <- divvy %>%
 
 Maybe which bikes are out of commission?
 How long a bike is kept?
-```{r}
-divvy %>% head(100000) %>% filter(is.na(start_time))
 
+How many bikes from each year are not utilized in the following years?
+```{r}
+divvy %>%
   group_by(bike_id) %>% 
-  summarize(first_year = min(start_time, na.rm = TRUE), 
-            last_year = max(stop_time, na.rm = TRUE)) %>% 
-  mutate(lifetime = last_year - first_year)
+  summarize(first_year = min(year(start_time)), 
+            last_year = max(year(stop_time))) %>% 
+  mutate(lifetime = last_year - first_year) %>% 
+  filter(arrange(-lifetime))
+
+new_per_year <- 
+  divvy %>%
+  mutate(f_year = year(start_time), l_year = year(stop_time)) %>%
+  filter(f_year != 2019) %>%
+  group_by(f_year) %>%
+  summarize(numbers = n())
+
+divvy %>%
+  mutate(f_year = year(start_time), l_year = year(stop_time)) %>%
+  mutate(lifetime = l_year - f_year) %>%
+  filter(lifetime ==0) %>%
+  group_by(f_year) %>%
+  summarize(numbers = n())
+
+(first_year = min(year(start_time)), 
+            last_year = max(year(stop_time))) %>% 
+  filter(arrange(-lifetime)
 ```
 
 
