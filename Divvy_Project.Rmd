@@ -140,9 +140,8 @@ divvy %>%
   summarize(riders = n()) %>% 
   arrange (-riders) %>% head(10)
 ```
-For these combinations, is there a trend in the direction that users go?
 
-QUESTION 5
+QUESTION 4
 During the busiest month, which are the top 10 stations that have more bikes taken than returned. And which more returned than taken.
 ```{r}
 #add variable for start month and variable for stop month
@@ -196,21 +195,7 @@ more_returned <- take_return %>% arrange(diff) %>% head(10)
 more_returned
 ```
 
-
-Of the riders who keep a bike overnight, graph the proportion of riders who keep the bike for <1 day, 1-10 days, 10-20 days, 20-30 days >30 days.
-```{r}
-divvy_overnight <- divvy %>% 
-  select(trip_id, start_time, stop_time, trip_duration) %>%
-  mutate(start_day = wday(start_time), stop_day = wday(stop_time)) %>%
-  filter(start_day != stop_day) %>% 
-  #calculate number of days
-  mutate(trip_days = format(trip_duration/(60*60*24), scientific = FALSE))
-#create day categories
-#graph
-```
-
-
-QUESTION 6
+QUESTION 5
 What proportion of bikes that start being used that year are not utilized in the following years?
 ```{r}
 bike_life <- divvy %>%
