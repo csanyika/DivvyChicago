@@ -25,6 +25,7 @@ divvy$start_time <- mdy_hms(divvy$start_time)
 divvy$stop_time <- mdy_hms(divvy$stop_time)
 ```
 
+QUESTION 1
 How much of the data does not have an entry for gender? What are the possible reasons for this?
 ```{r}
 unspesified_n <- nrow(divvy %>% filter(gender==""))
@@ -37,23 +38,47 @@ unspecified <- divvy %>% filter(gender=="") %>%
   summarise(counts =n()) %>%
   mutate(prop = counts/sum(counts))
 unspecified
-#most unspecified gender entries are for customers. It makes sense that this data is not provided because customers buy passes as needed where as subscribers would be expected to be frequent users with accounts
+#most unspecified gender entries are for customers. It makes sense that this data is not provided because customers buy passes as needed where as subscribers would be expected to be frequent users with accounts where they enter their personal information
 ```
 
-Number of riders per day stratified by gender. Excluding data missing gender.
+QUESTION 2
+Plot the number of riders per day stratified by user type. Then by gender.
 ```{r}
-divvy_week <- divvy %>%
-  filter(gender %in% c("Female", "Male")) %>%
+divvy_user <- divvy %>%
   mutate(start_date = as_date(start_time)) %>%
-  group_by(start_date, gender) %>%
+  group_by(start_date, user_type) %>%
   summarize(rides = n()) %>%
-  mutate(dayofweek = wday(start_date)) %>% 
-  group_by(dayofweek, gender) %>% 
+  mutate(dayofweek = wday(start_date)) %>%
+  group_by(dayofweek, user_type) %>% 
   summarize(ave_ride = mean(rides))
 
 library(ggplot2)
 
-ggplot(divvy_week,
+ggplot(divvy_user,
+       aes(x=dayofweek, y=ave_ride, color=user_type))+
+  geom_line() +
+  labs(x = "Day of the Week", y = "Number of Rides", color = "User Type") +
+  scale_x_continuous(breaks = 1:7, labels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))
+
+#why is Dependent so close to 0?
+prop_dependent <- nrow(divvy %>% filter(user_type == "Dependent"))/nrow(divvy)
+format(prop_dependent*100,  scientific = FALSE)
+#less than 1% of rides are by dependents
+```
+
+```{r}
+#by gender
+divvy_gender <- divvy %>%
+  filter(gender %in% c("Female", "Male")) %>%
+  mutate(start_date = as_date(start_time)) %>%
+  group_by(start_date, gender) %>%
+  summarize(rides = n()) %>%
+  mutate(dayofweek = wday(start_date)) %>%
+  group_by(dayofweek, gender) %>% 
+  summarize(ave_ride = mean(rides))
+
+
+ggplot(divvy_gender,
        aes(x=dayofweek, y=ave_ride, color=gender))+
   geom_line() +
   labs(x = "Day of the Week", y = "Number of Rides", color = "Gender") +
@@ -61,58 +86,66 @@ ggplot(divvy_week,
 ```
 
 
-Number of riders at different times throughout each day. Graph for each listed gender
-
-Graph the popularity of Which day of week vs time use heatmap partition by gender
-What is the proportion of female to male riders in each month? Rank in descending order. Maybe by starting area? Or by ending area?
-  - this information could be valuable for advertising purposes as well as design purposes. Different shapes of seats?
+QUESTION 3
+Average number of riders at different times throughout each day. Separate graphs for different genders. 
 ```{r}
-divvy_days <- divvy %>% head(1000)
+divvy_days <- divvy %>%
   filter(gender %in% c("Female", "Male")) %>%
-  mutate(dayofweek = weekdays(start_time),
+  mutate(start_date = as_date(start_time),
          s_time = format(start_time, "%H")) %>%
-  group_by(dayofweek, s_time) %>%
-  summarize(female = sum(gender=="Female"), 
-           male= sum(gender=="Male")) %>%
+  group_by(start_date, gender, s_time) %>%
+  summarize(rides = n()) %>%
+  mutate(dayofweek = weekdays(start_date)) %>%
+  group_by(dayofweek, s_time, gender) %>%
+  summarize(ave_riders = mean(rides)) %>%
   ungroup()
 
-ggplot(divvy_days,
-       aes(x=dayofweek, y=s_time, fill=female)) + 
+#filter for male entries
+divvy_days_male <- divvy_days %>% filter(gender=="Male")
+#male heat map
+ggplot(divvy_days_male,
+       aes(x=dayofweek, y=s_time, fill=ave_riders)) + 
   geom_tile() +
-  scale_fill_gradient(low = "lightblue", high = "darkblue") +
-  labs(x = "Day of Week", y = "", title = "Female Riders per Day of the Week") +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", limits = range(0,max(divvy_days_male$ave_riders))) +
+  labs(x = "Day of Week", y = "24-Hour Time", title = "Male Riders per Day of the Week") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
-ggplot(divvy_days,
-       aes(x=dayofweek, y=s_time, fill=male)) + 
+#filter for female entries
+divvy_days_female <- divvy_days %>% filter(gender=="Female")
+#female heat map
+ggplot(divvy_days_female,
+       aes(x=dayofweek, y=s_time, fill=ave_riders)) + 
   geom_tile() +
   scale_fill_gradient(low = "lightblue", high = "darkblue") +
-  labs(x = "Day of Week", y = "", title = "Male Riders per Day of the Week") +
+  labs(x = "Day of Week", y = "24-Hour Time", title = "Female Riders per Day of the Week") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+#female heatmap with same range as male
+ggplot(divvy_days_female,
+       aes(x=dayofweek, y=s_time, fill=ave_riders)) + 
+  geom_tile() +
+  scale_fill_gradient(low = "lightblue", high = "darkblue", limits = range(0,max(divvy_days_male$ave_riders))) +
+  labs(x = "Day of Week", y = "24-Hour Time", title = "Female Riders per Day of the Week") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-
-
+QUESTION 4
 What are the top 10 most popular start/stop stations?
 ```{r}
-divvy %>% group_by(from_station_name, to_station_name) %>% summarize(riders = n()) %>% arrange (-riders)
+divvy %>% 
+  group_by(from_station_name, to_station_name) %>% 
+  summarize(riders = n()) %>% 
+  arrange (-riders) %>% head(10)
 ```
+For these combinations, is there a trend in the direction that users go?
 
-  
-Which station do most rides start from?
-  - end of day, need to ensure bikes are brought back to there
-  - may also need to pick up bikes from busy stations drop off
+QUESTION 5
+During the busiest month, which are the top 10 stations that have more bikes taken than returned. And which more returned than taken.
 ```{r}
-
-```
-
-What is the average trip duration per age range (0-10; 10-20; 20-30 etc.)? Create a data visualization stratified by user type.
-  - frequency of each age range to get an idea of how many bikes need to be available at a time. Maybe add more bikes to some stations?
-  
-During the busiest month, which are the top 10 stations that have more bikes taken than returned. And which returned more than taken.
-```{r}
+#add variable for start month and variable for stop month
 divvy_month <- divvy %>% 
   mutate(start_month = month(start_time), stop_month = month(stop_time))
 
@@ -132,22 +165,28 @@ busy_stop <- divvy_month %>%
   head(1)
 busy_stop
 
-#August (8) is busiest for starting and stoping rides
+#August (8) is busiest for starting and stopping rides
 divvy_month <- divvy_month %>% filter(start_month == 8)
 
+#stations rides start in August
 take <- divvy_month %>% 
   group_by(from_station_id, from_station_name) %>% 
   summarise(bikes_taken = n())
 
+#stations rides stop in August
 return <- divvy_month %>% 
   group_by(to_station_id, to_station_name) %>% 
   summarise(bikes_returned = n())
 
+#join taken and returned to show number of bikes and taken and returned from each station in August
 take_return <- take %>% 
   left_join(return, by= c("from_station_name" = "to_station_name")) %>% 
+  #calculate difference between bikes taken and returned
   mutate(diff = bikes_taken-bikes_returned) %>%
+  #rename variables
   rename(station_id = from_station_id) %>%
   rename(station_name = from_station_name) %>% 
+  #select relevant columns
   select(station_id, station_name, bikes_taken, bikes_returned, diff) 
 
 more_taken <- take_return %>% arrange(-diff) %>% head(10)
@@ -171,35 +210,23 @@ divvy_overnight <- divvy %>%
 ```
 
 
-Maybe which bikes are out of commission?
-How long a bike is kept?
-
-How many bikes from each year are not utilized in the following years?
+QUESTION 6
+What proportion of bikes that start being used that year are not utilized in the following years?
 ```{r}
-divvy %>%
+bike_life <- divvy %>%
   group_by(bike_id) %>% 
   summarize(first_year = min(year(start_time)), 
             last_year = max(year(stop_time))) %>% 
-  mutate(lifetime = last_year - first_year) %>% 
-  filter(arrange(-lifetime))
+  filter(first_year != 2019)
 
-new_per_year <- 
-  divvy %>%
-  mutate(f_year = year(start_time), l_year = year(stop_time)) %>%
-  filter(f_year != 2019) %>%
-  group_by(f_year) %>%
-  summarize(numbers = n())
-
-divvy %>%
-  mutate(f_year = year(start_time), l_year = year(stop_time)) %>%
-  mutate(lifetime = l_year - f_year) %>%
-  filter(lifetime ==0) %>%
-  group_by(f_year) %>%
-  summarize(numbers = n())
-
-(first_year = min(year(start_time)), 
-            last_year = max(year(stop_time))) %>% 
-  filter(arrange(-lifetime)
+new_year <- bike_life %>% 
+  group_by(first_year) %>%
+  summarize(new_bikes = n())
+bike_gone <- bike_life %>% 
+  filter(first_year==last_year) %>% 
+  group_by(first_year) %>%
+  summarize(bikes_gone = n()) %>%
+  left_join(new_year, by = "first_year") %>%
+  mutate(percent_bikes_gone = (bikes_gone/new_bikes)*100)
+bike_gone
 ```
-
-
